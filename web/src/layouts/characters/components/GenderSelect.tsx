@@ -15,7 +15,6 @@ export const GenderSelect = forwardRef<MutableRefObject<any>, RefProps>((props, 
     return [
       { name: locale.ui.male, value: 'male' },
       { name: locale.ui.female, value: 'female' },
-      { name: locale.ui.non_binary, value: 'non-binary' },
     ];
   }, [locale]);
 
