@@ -16,6 +16,8 @@ lib.callback.register('ox:generateVehicleData', function(processAll)
     for i = 1, #models do
         local model = models[i]:lower()
 
+        print(model)
+
         if processAll or not Ox.GetVehicleData(model) then
             local hash = joaat(model)
 
