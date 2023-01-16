@@ -5,6 +5,7 @@ local db = require 'groups.db'
 ---Load groups from the database and creates permission groups.
 local function loadGroups()
     local results = db.selectGroups()
+    local groups = {}
 
     if results then
         for _, data in pairs(GroupRegistry) do
@@ -53,8 +54,12 @@ local function loadGroups()
 
             GlobalState[principal] = GroupRegistry[group.name]
             GlobalState[('%s:count'):format(group.name)] = 0
+
+            groups[#groups + 1] = group.name
         end
     end
+
+    GlobalState['groups'] = groups
 end
 
 MySQL.ready(loadGroups)
