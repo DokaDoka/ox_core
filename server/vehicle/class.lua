@@ -104,7 +104,10 @@ local function despawnVehicle(vehicle, removeEntry, metadata)
 
     VehicleRegistry[entity] = nil
     vehicleData[entity] = nil
-    DeleteEntity(entity)
+
+    if DoesEntityExist(entity) then
+        DeleteEntity(entity)
+    end
 end
 
 function CVehicle:despawn()
