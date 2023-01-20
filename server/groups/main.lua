@@ -68,5 +68,26 @@ lib.addCommand('group.admin', 'refreshgroups', loadGroups)
 
 lib.addCommand('group.admin', 'setgroup', function(source, args)
     local player = Ox.GetPlayer(args.target)
-    return player and player:setGroup(args.group, args.grade)
+
+    if not player then
+        return lib.notify(source, {title = 'Invalid Target', type = 'error'})
+    end
+
+    local group = GlobalState[('group.%s'):format(args.group)]
+
+    if not group then
+        return lib.notify(source, {title = 'Invalid Group', type = 'error'})
+    end
+
+    if args.grade ~= 0 and not group.grades[args.grade] then
+        return lib.notify(source, {title = 'Invalid Grade', type = 'error'})
+    end
+
+    player:setGroup(args.group, args.grade)
+
+    lib.notify(source, {
+        title = ('%s: %s'):format(player.name, group.label),
+        type = 'success',
+        description = args.grade == 0 and 'Removed' or ('%s (%s)'):format(group.grades[args.grade], args.grade)
+    })
 end, { 'target:number', 'group:string', 'grade:number' })
