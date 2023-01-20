@@ -164,7 +164,7 @@ local function spawnPlayer(coords)
     SwitchInPlayer(cache.ped)
 
     while GetPlayerSwitchState() ~= 12 do Wait(0) end
-    
+
     while not HasCollisionLoadedAroundEntity(cache.ped) do Wait(0) end
 	FreezeEntityPosition(cache.ped, false)
 end
@@ -218,6 +218,8 @@ RegisterNetEvent('ox:loadPlayer', function(spawn, data, health, armour)
         end
     end
 
+	SetGameplayCamRelativeHeading(360 - GetEntityHeading(cache.ped))
+	Wait(0)
     SwitchOutPlayer(cache.ped, 0, 1)
 
     while GetPlayerSwitchState() ~= 5 do Wait(50) end
