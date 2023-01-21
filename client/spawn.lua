@@ -179,6 +179,7 @@ end)
 ---@param health number?
 ---@param armour number?
 RegisterNetEvent('ox:loadPlayer', function(spawn, data, health, armour)
+	SetCloudHatOpacity(0.0)
 	Wait(500)
 	RenderScriptCams(false, false, 0, true, true)
 	DestroyCam(cam, false)
@@ -249,6 +250,7 @@ RegisterNetEvent('ox:loadPlayer', function(spawn, data, health, armour)
     SetPedArmour(cache.ped, armour or 0)
     SetPlayerControl(cache.playerId, true, 0)
     TriggerEvent('ox:playerLoaded', player)
+	SetCloudHatOpacity(1.0)
 
     CreateThread(startStatusLoop)
 
