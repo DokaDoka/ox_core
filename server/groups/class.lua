@@ -1,4 +1,4 @@
----@class CGroupProperties
+---@class OxGroupProperties
 ---@field name string
 ---@field label string
 ---@field grades number[]
@@ -6,13 +6,13 @@
 ---@field hasAccount boolean
 ---@field adminGrade number
 
----@class CGroup : CGroupProperties
-local CGroup = {}
+---@class OxGroup : OxGroupProperties
+local OxGroup = {}
 local pefcl = GetExport('pefcl')
 
----@param player CPlayer
+---@param player OxPlayer
 ---@param grade number
-function CGroup:add(player, grade)
+function OxGroup:add(player, grade)
     lib.addPrincipal(player.source, ('%s:%s'):format(self.principal, grade))
     local playerGroups = player.private.groups
     playerGroups[self.name] = grade
@@ -23,9 +23,9 @@ function CGroup:add(player, grade)
     end
 end
 
----@param player CPlayer
+---@param player OxPlayer
 ---@param grade number
-function CGroup:remove(player, grade)
+function OxGroup:remove(player, grade)
     lib.removePrincipal(player.source, ('%s:%s'):format(self.principal, grade))
     local playerGroups = player.private.groups
     playerGroups[self.name] = nil
@@ -36,10 +36,10 @@ function CGroup:remove(player, grade)
     end
 end
 
----@param player CPlayer
+---@param player OxPlayer
 ---@param grade number
 ---@param remove? boolean
-function CGroup:setAccount(player, grade, remove)
+function OxGroup:setAccount(player, grade, remove)
     local maxGrade = #self.grades
 
     if remove then
@@ -69,11 +69,11 @@ function CGroup:setAccount(player, grade, remove)
     end
 end
 
-local db = require 'groups.db'
+local db = require 'server.groups.db'
 
----@param player CPlayer
+---@param player OxPlayer
 ---@param grade? number
-function CGroup:set(player, grade)
+function OxGroup:set(player, grade)
     if not grade then grade = 0 end
 
     if not self.grades[grade] and grade > 0 then
@@ -107,5 +107,5 @@ function CGroup:set(player, grade)
     return true
 end
 
-local Class = require 'class'
-return Class.new(CGroup)
+local Class = require 'shared.class'
+return Class.new(OxGroup)

@@ -1,6 +1,6 @@
-const exp = exports.ox_core.CPlayer;
+import { Ox } from '../server';
 
-export class CPlayer {
+export class OxPlayer {
   coords: number[];
   groups: Record<string, number>;
   userid: number;
@@ -56,14 +56,14 @@ export class CPlayer {
   }
 
   get(key?: string): any {
-    return exp("get", key);
+    return Ox.CallPlayerMethod("get", key);
   }
 }
 
-export let player: CPlayer | undefined = exports.ox_core.GetPlayerData();
+export let player: OxPlayer | undefined = Ox.GetPlayerData();
 
-function getPlayerProxy(data: CPlayer) {
-  return new Proxy(new CPlayer(data), {
+function getPlayerProxy(data: OxPlayer) {
+  return new Proxy(new OxPlayer(data), {
     get(target, key: string) {
       if (key in target || typeof key !== "string") {
         return target[key];
@@ -76,7 +76,7 @@ function getPlayerProxy(data: CPlayer) {
         }
       });
 
-      target[key] = exp("get", key) || false;
+      target[key] = Ox.CallPlayerMethod("get", key) || false;
       return target[key];
     },
   });

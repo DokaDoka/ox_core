@@ -1,6 +1,6 @@
-local db = require 'player.db'
+local db = require 'server.player.db'
 
----@type table<number, CPlayer>
+---@type table<number, OxPlayer>
 local PlayerRegistry = {}
 
 ---@type table<number, number>
@@ -9,12 +9,7 @@ local playerIdFromUserId = {}
 ---@type table<number, true>
 local connectingPlayers = {}
 
-local CPlayer = require 'player.class'
-
-local private_mt = {
-    __ext = 0,
-    __pack = function() return '' end,
-}
+local OxPlayer = require 'server.player.class'
 
 local function addPlayer(playerId, username)
     local identifiers = Ox.GetIdentifiers(playerId)
@@ -46,17 +41,17 @@ local function addPlayer(playerId, username)
         userId = db.createUser(username, identifiers) --[[@as number]]
     end
 
-    local player = CPlayer.new({
+    local player = OxPlayer.new({
         source = playerId,
         userid = userId,
         username = username,
-        private = setmetatable({
+        private = {
             inScope = {},
             groups = {},
             statuses = {},
             licenses = {},
             metadata = identifiers,
-        }, private_mt)
+        }
     })
 
     PlayerRegistry[playerId] = player
@@ -65,9 +60,14 @@ local function addPlayer(playerId, username)
     return player
 end
 
-local function removePlayer(player, reason)
-    PlayerRegistry[player.source] = nil
-    playerIdFromUserId[player.userid] = nil
+local function removePlayer(playerId, userId, reason)
+    PlayerRegistry[playerId] = nil
+    playerIdFromUserId[userId] = nil
+
+    for _, player in pairs(PlayerRegistry) do
+        player.private.inScope[playerId] = nil
+    end
+
     --[[ TODO: Log session ended ]]
 end
 
@@ -83,9 +83,9 @@ local function assignNonTemporaryId(tempId, newId)
     player:setAsJoined(newId)
 end
 
----Returns an instance of CPlayer belonging to the given playerId.
+---Returns an instance of OxPlayer belonging to the given playerId.
 ---@param playerId number
----@return CPlayer
+---@return OxPlayer
 function Ox.GetPlayer(playerId)
     return PlayerRegistry[playerId]
 end
@@ -100,7 +100,7 @@ function Ox.GetAllPlayers()
     return PlayerRegistry
 end
 ---Check if a player matches filter parameters.
----@param player CPlayer
+---@param player OxPlayer
 ---@param filter table
 ---@return boolean?
 local function filterPlayer(player, filter)
@@ -121,7 +121,7 @@ end
 
 ---Returns the first player that matches the filter properties.
 ---@param filter table
----@return CPlayer?
+---@return OxPlayer?
 function Ox.GetPlayerByFilter(filter)
     for _, player in pairs(PlayerRegistry) do
         if player.charid then
@@ -134,7 +134,7 @@ end
 
 ---Returns an array of all players matching the filter properties.
 ---@param filter table?
----@return CPlayer[]
+---@return OxPlayer[]
 function Ox.GetPlayers(filter)
     local size = 0
     local players = {}
@@ -160,7 +160,7 @@ RegisterNetEvent('ox:playerJoined', function()
         return DropPlayer(playerId, serverLockdown)
     end
 
-    ---@type CPlayer?
+    ---@type OxPlayer?
     local player = PlayerRegistry[playerId]
 
     if not player then
@@ -245,7 +245,7 @@ AddEventHandler('playerDropped', function(reason)
     if player then
         player:logout(true)
 
-        removePlayer(player, ('Dropped, %s'):format(reason) )
+        removePlayer(player.source, player.userid, ('Dropped, %s'):format(reason) )
     end
 end)
 

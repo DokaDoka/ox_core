@@ -1,8 +1,8 @@
 local Vehicle = {}
-local db = require 'vehicle.db'
-local VehicleRegistry = require 'vehicle.registry'
+local db = require 'server.vehicle.db'
+local VehicleRegistry = require 'server.vehicle.registry'
 
-require 'vehicle.commands'
+require 'server.vehicle.commands'
 
 ---Save all vehicles for the resource and despawn them.
 ---@param resource string?
@@ -34,7 +34,7 @@ function Vehicle.saveAll(resource)
     end
 end
 
-local CVehicle = require 'vehicle.class'
+local OxVehicle = require 'server.vehicle.class'
 
 ---@param id? number
 ---@param owner? number | boolean
@@ -46,7 +46,7 @@ local CVehicle = require 'vehicle.class'
 ---@param coords vector3
 ---@param heading number
 ---@param vType string
----@return CVehicle?
+---@return OxVehicle?
 local function spawnVehicle(id, owner, group, plate, vin, model, script, data, coords, heading, vType)
     -- New native seems to be missing some types, for now we'll convert to known types
     -- https://github.com/citizenfx/fivem/commit/1e266a2ca5c04eb96c090de67508a3475d35d6da
@@ -61,7 +61,7 @@ local function spawnVehicle(id, owner, group, plate, vin, model, script, data, c
     local entity = CreateVehicleServerSetter(joaat(model), vType, coords.x, coords.y, coords.z, heading)
 
     if DoesEntityExist(entity) then
-        local vehicle = CVehicle.new({
+        local vehicle = OxVehicle.new({
             id = id,
             netid = NetworkGetNetworkIdFromEntity(entity),
             owner = owner,
@@ -125,7 +125,7 @@ function Ox.CreateVehicle(data, coords, heading)
         end
 
         vehicle.data = json.decode(vehicle.data--[[@as string]] )
-        local modelData = Ox.GetVehicleData(vehicle.model)
+        local modelData = Ox.GetVehicleData(vehicle.model) --[[@as VehicleData]]
 
         if not modelData then
             error(("Vehicle model is invalid '%s'\nEnsure vehicle exists in '@ox_core/files/vehicles.json'"))
@@ -144,7 +144,7 @@ function Ox.CreateVehicle(data, coords, heading)
     end
 
     local model = data.model:lower()
-    local modelData = Ox.GetVehicleData(model)
+    local modelData = Ox.GetVehicleData(model) --[[@as VehicleData]]
 
     if not modelData then
         error(("Vehicle model is invalid '%s'\nEnsure vehicle exists in '@ox_core/files/vehicles.json'"))

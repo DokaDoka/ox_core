@@ -1,6 +1,6 @@
-local GroupRegistry = require 'groups.registry'
-local CGroup = require 'groups.class'
-local db = require 'groups.db'
+local GroupRegistry = require 'server.groups.registry'
+local OxGroup = require 'server.groups.class'
+local db = require 'server.groups.db'
 
 ---Load groups from the database and creates permission groups.
 local function loadGroups()
@@ -43,7 +43,7 @@ local function loadGroups()
                 parent = child
             end
 
-            GroupRegistry[group.name] = CGroup.new({
+            GroupRegistry[group.name] = OxGroup.new({
                 name = group.name,
                 label = group.label,
                 grades = group.grades,

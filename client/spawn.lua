@@ -1,5 +1,53 @@
-local cam
+NetworkStartSoloTutorialSession()
+
+CreateThread(function()
+    if GetIsLoadingScreenActive() then
+        SendLoadingScreenMessage('{"fullyLoaded": true}')
+        ShutdownLoadingScreenNui()
+    end
+
+    while not IsScreenFadedOut() do
+        DoScreenFadeOut(0)
+        Wait(0)
+    end
+
+    ShutdownLoadingScreen()
+    Wait(500)
+    TriggerServerEvent('ox:playerJoined')
+end)
+
 local hidePlayer
+
+local function setPlayerAsHidden(state)
+    hidePlayer = state
+    SetPedAoBlobRendering(cache.ped, not state)
+end
+
+local fivem_appearance = GetExport('fivem-appearance')
+
+local function setPlayerAppearance(data)
+    if not fivem_appearance then return end
+
+    fivem_appearance:setPlayerAppearance(data)
+end
+
+local function startPlayerCustomisation(model)
+    if not fivem_appearance then return end
+
+    setPlayerAppearance({ model = model })
+
+    local p = promise.new()
+
+    fivem_appearance:startPlayerCustomization(function(response)
+        if response then TriggerServerEvent('ox_appearance:save', response) end
+
+        p:resolve()
+    end, { ped = true, headBlend = true, faceFeatures = true, headOverlays = true, components = true, props = true, tattoos = true })
+
+    Citizen.Await(p)
+end
+
+local cam
 
 RegisterNUICallback('ox:setCharacter', function(data, cb)
 	cb(1)
@@ -8,11 +56,11 @@ RegisterNUICallback('ox:setCharacter', function(data, cb)
 		data = player.appearance[data + 1]
 
 		if data then
-			exports['fivem-appearance']:setPlayerAppearance(data)
-			hidePlayer = nil
+			setPlayerAppearance(data)
+			setPlayerAsHidden(false)
 		end
 	else
-		hidePlayer = true
+		setPlayerAsHidden(true)
 	end
 end)
 
@@ -42,36 +90,24 @@ end)
 
 RegisterNUICallback('ox:deleteCharacter', function(data, cb)
 	cb(1)
-	hidePlayer = true
+	setPlayerAsHidden(true)
 	TriggerServerEvent('ox:deleteCharacter', data)
 end)
 
 RegisterNetEvent('ox:selectCharacter', function(characters)
 	NetworkStartSoloTutorialSession()
     SetPlayerControl(cache.playerId, false, 0)
+    SetPlayerInvincible(cache.playerId, true)
+    DoScreenFadeOut(0)
 
-	if GetIsLoadingScreenActive() then
-		SendLoadingScreenMessage(json.encode({
-			fullyLoaded = true
-		}))
-
-		ShutdownLoadingScreenNui()
-
-		while GetIsLoadingScreenActive() do
-			DoScreenFadeOut(0)
-			Wait(0)
-		end
-	end
-
-	while not IsScreenFadedOut() do
-		DoScreenFadeOut(0)
-		Wait(0)
-	end
+    while not IsScreenFadedOut() do
+        Wait(0)
+    end
 
 	if PlayerIsLoaded then
 		table.wipe(player)
 		TriggerEvent('ox:playerLogout')
-		ClearPedTasks(cache.ped)
+        ClearPedTasks(cache.ped)
         Wait(500)
 	end
 
@@ -82,32 +118,19 @@ RegisterNetEvent('ox:selectCharacter', function(characters)
 			HideHudAndRadarThisFrame()
 
 			if hidePlayer then
-				SetLocalPlayerInvisibleLocally(true)
-                SetPedAoBlobRendering(cache.ped, false)
+                SetLocalPlayerInvisibleLocally(true)
 			end
 
 			Wait(0)
 		end
-
-		DoScreenFadeIn(200)
-		SetMaxWantedLevel(0)
-		NetworkSetFriendlyFireOption(true)
-		SetPlayerInvincible(cache.playerId, false)
-        SetPlayerHealthRechargeMultiplier(cache.playerId, 0.0)
 	end)
 
-	SetPlayerInvincible(cache.playerId, true)
-	StartPlayerTeleport(cache.playerId, Client.DEFAULT_SPAWN.x, Client.DEFAULT_SPAWN.y, Client.DEFAULT_SPAWN.z, Client.DEFAULT_SPAWN.w, false, true)
+    SetEntityCoordsNoOffset(cache.ped, Client.DEFAULT_SPAWN.x, Client.DEFAULT_SPAWN.y, Client.DEFAULT_SPAWN.z, true, true, false)
+	StartPlayerTeleport(cache.playerId, Client.DEFAULT_SPAWN.x, Client.DEFAULT_SPAWN.y, Client.DEFAULT_SPAWN.z, Client.DEFAULT_SPAWN.w, false, true, false)
 
-	while IsPlayerTeleportActive() do Wait(0) end
+	while not UpdatePlayerTeleport(cache.playerId) do Wait(0) end
 
-	if characters[1]?.appearance then
-		exports['fivem-appearance']:setPlayerAppearance(characters[1].appearance)
-	else
-		hidePlayer = true
-	end
-
-	cache.ped = PlayerPedId()
+    setPlayerAsHidden(true)
 
 	local offset = GetOffsetFromEntityInWorldCoords(cache.ped, 0.0, 4.7, 0.2)
 	cam = CreateCameraWithParams('DEFAULT_SCRIPTED_CAMERA', offset.x, offset.y, offset.z, 0.0, 0.0, 0.0, 30.0, false, 0)
@@ -139,7 +162,7 @@ RegisterNetEvent('ox:selectCharacter', function(characters)
 	SetNuiFocusKeepInput(false)
 end)
 
-local startStatusLoop = require 'status'
+local startStatusLoop = require 'client.status'
 local spawnLabels = {}
 
 RegisterNUICallback('clickSpawn', function(data, cb)
@@ -152,21 +175,25 @@ RegisterNUICallback('clickSpawn', function(data, cb)
 end)
 
 local function spawnPlayer(coords)
-	NetworkEndTutorialSession()
+    local ped = cache.ped
+
+    NetworkEndTutorialSession()
 	RequestCollisionAtCoord(coords.x, coords.y, coords.z)
 	SetEntityCoordsNoOffset(cache.ped, coords.x, coords.y, coords.z, false, false, false)
-    SetEntityHeading(cache.ped, coords.w)
-	FreezeEntityPosition(cache.ped, true)
+    SetEntityHeading(ped, coords.w)
+	FreezeEntityPosition(ped, true)
     SetGameplayCamRelativeHeading(0)
 
     while GetPlayerSwitchState() ~= 5 do Wait(0) end
 
-    SwitchInPlayer(cache.ped)
+    SwitchInPlayer(ped)
 
     while GetPlayerSwitchState() ~= 12 do Wait(0) end
 
-    while not HasCollisionLoadedAroundEntity(cache.ped) do Wait(0) end
-	FreezeEntityPosition(cache.ped, false)
+    while not HasCollisionLoadedAroundEntity(ped) do Wait(0) end
+	FreezeEntityPosition(ped, false)
+
+    TriggerEvent('playerSpawned')
 end
 
 RegisterNUICallback('selectSpawn', function(data, cb)
@@ -183,27 +210,12 @@ RegisterNetEvent('ox:loadPlayer', function(spawn, data, health, armour)
 	Wait(500)
 	RenderScriptCams(false, false, 0, true, true)
 	DestroyCam(cam, false)
-    SetLocalPlayerInvisibleLocally(false)
-    SetPedAoBlobRendering(cache.ped, true)
 
 	cam = nil
-	hidePlayer = nil
+	setPlayerAsHidden(false)
 
 	if not player.appearance or not player.appearance.model then
-		local p = promise.new()
-
-        local model = 'mp_m_freemode_01'
-        if data.gender == 'female' then model = 'mp_f_freemode_01' end
-
-        exports['fivem-appearance']:setPlayerAppearance({ model = model })
-        exports['fivem-appearance']:startPlayerCustomization(function(appearance)
-			if appearance then
-				TriggerServerEvent('ox_appearance:save', appearance)
-			end
-			p:resolve()
-		end, { ped = true, headBlend = true, faceFeatures = true, headOverlays = true, components = true, props = true, tattoos = true })
-
-		Citizen.Await(p)
+        startPlayerCustomisation(data.gender == 'female' and 'mp_f_freemode_01' or 'mp_m_freemode_01')
 		DoScreenFadeOut(200)
 		Wait(500)
 	end
@@ -227,6 +239,14 @@ RegisterNetEvent('ox:loadPlayer', function(spawn, data, health, armour)
 
     DoScreenFadeIn(300)
 
+    health = LocalPlayer.state.dead and 0 or health or GetEntityMaxHealth(cache.ped)
+
+    SetEntityHealth(cache.ped, health)
+    SetPedArmour(cache.ped, armour or 0)
+
+    SetPlayerData(data)
+    TriggerEvent('ox:playerLoaded', player)
+
     if Client.SPAWN_SELECT then
         SendNUIMessage({
             action = 'sendSpawns',
@@ -242,17 +262,15 @@ RegisterNetEvent('ox:loadPlayer', function(spawn, data, health, armour)
         spawnPlayer(spawn or Client.DEFAULT_SPAWN)
     end
 
-    health = LocalPlayer.state.dead and 0 or health or GetEntityMaxHealth(cache.ped)
-
 	SetNuiFocus(false, false)
-    SetPlayerData(data)
-    SetEntityHealth(cache.ped, health)
-    SetPedArmour(cache.ped, armour or 0)
     SetPlayerControl(cache.playerId, true, 0)
-    TriggerEvent('ox:playerLoaded', player)
+    SetPlayerInvincible(cache.playerId, false)
+    SetMaxWantedLevel(0)
+    NetworkSetFriendlyFireOption(true)
+    SetPlayerHealthRechargeMultiplier(cache.playerId, 0.0)
 	SetCloudHatOpacity(1.0)
 
     CreateThread(startStatusLoop)
 
-    if Client.DEATH_SYSTEM then CreateThread(require 'death') end
+    if Client.DEATH_SYSTEM then CreateThread(require 'client.death') end
 end)

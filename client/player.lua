@@ -5,14 +5,14 @@ PlayerIsLoaded = false
 PlayerIsDead = false
 player = {}
 
-CPlayer = {}
-CPlayer.__index = CPlayer
+OxPlayer = {}
+OxPlayer.__index = OxPlayer
 
 local playerData = {}
 
 function SetPlayerData(data)
     PlayerIsLoaded = true
-    player = setmetatable(data, CPlayer)
+    player = setmetatable(data, OxPlayer)
 end
 
 AddEventHandler('ox:playerLogout', function()
@@ -21,16 +21,18 @@ AddEventHandler('ox:playerLogout', function()
     table.wipe(playerData)
 end)
 
-NetEventHandler('ox:setGroup', function(name, grade)
+local utils = require 'client.utils'
+
+utils.registerNetEvent('ox:setGroup', function(name, grade)
     player.groups[name] = grade
 end)
 
-NetEventHandler('ox:setPlayerData', function(index, value)
+utils.registerNetEvent('ox:setPlayerData', function(index, value)
     playerData[index] = value
     TriggerEvent(('ox:player:%s'):format(index), value)
 end)
 
-function CPlayer:get(index)
+function OxPlayer:get(index)
     return playerData[index]
 end
 
@@ -38,8 +40,8 @@ end
 ---@param method string
 ---@param ... unknown
 ---@return unknown
-function Ox.CPlayer(method, ...)
-    method = CPlayer[method]
+function Ox.CallPlayerMethod(method, ...)
+    method = OxPlayer[method]
     return method and method(player, ...)
 end
 

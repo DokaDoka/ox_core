@@ -1,4 +1,4 @@
-const exp = exports.ox_core.CVehicle;
+import { Ox } from '../server';
 
 export interface VehicleStats {
   acceleration: number;
@@ -23,7 +23,7 @@ export interface VehicleData extends VehicleStats {
   type: string;
 }
 
-interface ICVehicle {
+interface IOxVehicle {
   owner: number;
   id: number;
   netid: number;
@@ -32,7 +32,7 @@ interface ICVehicle {
   script: string;
 }
 
-export class CVehicle implements ICVehicle {
+export class OxVehicle implements IOxVehicle {
   owner: number;
   id: number;
   netid: number;
@@ -40,7 +40,7 @@ export class CVehicle implements ICVehicle {
   model: string;
   script: string;
 
-  constructor(data: ICVehicle) {
+  constructor(data: IOxVehicle) {
     this.owner = data.owner;
     this.id = data.id;
     this.netid = data.netid;
@@ -57,41 +57,41 @@ export class CVehicle implements ICVehicle {
   }
 
   set(index: string, value: any) {
-    exp(this.entity, "set", index, value);
+    Ox.CallVehicleMethod(this.entity, "set", index, value);
   }
 
   get(index?: string): any {
-    return exp(this.entity, "get", index);
+    return Ox.CallVehicleMethod(this.entity, "get", index);
   }
 
   despawn() {
-    exp(this.entity, "despawn");
+    Ox.CallVehicleMethod(this.entity, "despawn");
   }
 
   delete() {
-    exp(this.entity, "delete");
+    Ox.CallVehicleMethod(this.entity, "delete");
   }
 
   setStored(value: string, despawn?: boolean) {
-    exp(this.entity, "setStored", value, despawn);
+    Ox.CallVehicleMethod(this.entity, "setStored", value, despawn);
   }
 
   setOwner(charid?: number) {
-    return exp(this.entity, "setOwner", charid);
+    return Ox.CallVehicleMethod(this.entity, "setOwner", charid);
   }
 
   setGroup(groupName?: string) {
-    return exp(this.entity, "setGroup", groupName);
+    return Ox.CallVehicleMethod(this.entity, "setGroup", groupName);
   }
 
   setPlate(plate: string) {
-    return exp(this.entity, "setPlate", plate);
+    return Ox.CallVehicleMethod(this.entity, "setPlate", plate);
   }
 }
 
 export function GetVehicle(vehicleId: number) {
-  const vehicle = exports.ox_core.GetVehicle(vehicleId);
-  return vehicle ? new CVehicle(vehicle) : null;
+  const vehicle = Ox.GetVehicle(vehicleId);
+  return vehicle ? new OxVehicle(vehicle) : null;
 }
 
 export function GetVehicleFromNetId(netid: number) {
@@ -104,16 +104,16 @@ export async function CreateVehicle(
   coords: [number, number, number] | { x: number; y: number; z: number },
   heading: number
 ) {
-  const vehicle: ICVehicle = await exports.ox_core.CreateVehicle(data, coords, heading);
-  return new CVehicle(vehicle);
+  const vehicle: IOxVehicle = await Ox.CreateVehicle(data, coords, heading);
+  return new OxVehicle(vehicle);
 }
 
 export function GetVehicles(useclass?: boolean) {
-  const vehicles: CVehicle[] = exports.ox_core.GetVehicles();
+  const vehicles: OxVehicle[] = Ox.GetVehicles();
 
   if (useclass) {
     for (let i = 0; i === vehicles.length - 1; i++) {
-      vehicles[i] = new CVehicle(vehicles[i]);
+      vehicles[i] = new OxVehicle(vehicles[i]);
     }
   }
 

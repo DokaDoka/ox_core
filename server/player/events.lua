@@ -1,20 +1,20 @@
 AddEventHandler('playerEnteredScope', function(data)
-    local source = tonumber(data['for']) --[[@as number]]
-    local target = tonumber(data.player) --[[@as number]]
+    local source = tonumber(data['for'], 10)
+    local target = tonumber(data.player, 10)
     local player = Ox.GetPlayer(source)
 
-    if player and player.charid then
+    if player then
         local inScope = player.private.inScope
         inScope[target] = true
     end
 end)
 
 AddEventHandler('playerLeftScope', function(data)
-    local source = tonumber(data['for']) --[[@as number]]
-    local target = tonumber(data.player) --[[@as number]]
+    local source = tonumber(data['for'], 10)
+    local target = tonumber(data.player, 10)
     local player = Ox.GetPlayer(source)
 
-    if player and player.charid then
+    if player then
         local inScope = player.private.inScope
         inScope[target] = nil
     end
@@ -22,11 +22,11 @@ end)
 
 local npwd = GetExport('npwd')
 local appearance = GetExport('ox_appearance')
-local db = require 'player.db'
-local StatusRegistry = require 'status.registry'
+local db = require 'server.player.db'
+local StatusRegistry = require 'server.status.registry'
 
 RegisterNetEvent('ox:selectCharacter', function(data)
-    local player = Ox.GetPlayer(source) --[[@as CPlayer]]
+    local player = Ox.GetPlayer(source) --[[@as OxPlayer]]
     local character
 
     if type(data) == 'table' then

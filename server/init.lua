@@ -2,9 +2,6 @@ Server = {
     PRIMARY_IDENTIFIER = GetConvar('ox:primaryIdentifier', 'license2'),
 }
 
----@diagnostic disable-next-line: param-type-mismatch
-SetConvarReplicated('pe-basicloading:disableAutoShutdown', 1)
-
 if GetExport('ox_inventory') then
     SetConvarReplicated('inventory:framework', 'ox')
     SetConvarReplicated('inventory:trimplate ', 'false')
@@ -18,8 +15,8 @@ if GetExport('npwd') then
     }))
 end
 
-require 'groups.main'
-require 'status.main'
-require 'license.main'
-require 'player.main'
-require 'vehicle.main'
+require 'server.groups.main'
+require 'server.status.main'
+require 'server.license.main'
+require 'server.player.main'
+require 'server.vehicle.main'
