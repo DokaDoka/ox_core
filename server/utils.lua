@@ -9,14 +9,7 @@
 ---@param source number | string
 ---@return PlayerIdentifiers
 function Ox.GetIdentifiers(source)
-    ---@cast source string
-
-    if Shared.SV_LAN then
-        return {
-            [Server.PRIMARY_IDENTIFIER] = 'fayoum'
-        }
-    end
-
+    ---@cast source -number
     local identifiers = {}
 
     for i = 0, GetNumPlayerIdentifiers(source) - 1 do
