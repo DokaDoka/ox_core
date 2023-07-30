@@ -101,4 +101,4 @@ lib.addCommand('setgroup', {
         type = 'success',
         description = args.grade == 0 and 'Removed' or ('%s (%s)'):format(group.grades[args.grade], args.grade)
     })
-end, { 'target:number', 'group:string', 'grade:number' })
+end)
