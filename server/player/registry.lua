@@ -1,6 +1,6 @@
 local db = require 'server.player.db'
 
----@type table<number, OxPlayer>
+---@type table<number, OxPlayerInternal>
 local PlayerRegistry = {}
 
 ---@type table<number, number>
@@ -19,26 +19,25 @@ local function addPlayer(playerId, username)
     end
 
     primaryIdentifier = primaryIdentifier:gsub('([^:]+):', '')
-    local userId = db.getUserFromIdentifier(primaryIdentifier, false)
+    local userId = db.getUserFromIdentifier(primaryIdentifier)
 
     if Ox.GetPlayerFromUserId(userId) then
         if not Shared.DEBUG then
             return nil, ("userId '%d' is already active."):format(userId)
         end
 
-        local newestUserid = db.getUserFromIdentifier(primaryIdentifier, true)
+        -- If debug is enabled, check for secondary userId (allowing player to login with -cl2)
+        userId = db.getUserFromIdentifier(primaryIdentifier, 1)
 
-        if newestUserid ~= userId then
-            --[[ We found another user, let's use that instead! ]]
-            userId = newestUserid
-        else
-            --[[ We don't have another user to use, let's force the creation of a new one! ]]
-            userId = nil
+        if userId then
+            if Ox.GetPlayerFromUserId(userId) then
+                return nil, ("userId '%d' is already active."):format(userId)
+            end
         end
     end
 
     if not userId then
-        userId = db.createUser(username, Ox.GetIdentifiers(playerId)) --[[@as number]]
+        userId = db.createUser(username, Ox.GetIdentifiers(playerId))
     end
 
     local player = OxPlayer.new({
@@ -65,7 +64,7 @@ local function removePlayer(playerId, userId, reason)
     playerIdFromUserId[userId] = nil
 
     for _, player in pairs(PlayerRegistry) do
-        player.private.inScope[playerId] = nil
+        player:getPlayersInScope()[playerId] = nil
     end
 
     --[[ TODO: Log session ended ]]
@@ -83,9 +82,9 @@ local function assignNonTemporaryId(tempId, newId)
     player:setAsJoined(newId)
 end
 
----Returns an instance of OxPlayer belonging to the given playerId.
+---Returns an instance of OxPlayerInternal belonging to the given playerId.
 ---@param playerId number
----@return OxPlayer
+---@return OxPlayerInternal?
 function Ox.GetPlayer(playerId)
     return PlayerRegistry[playerId]
 end
@@ -100,11 +99,11 @@ function Ox.GetAllPlayers()
     return PlayerRegistry
 end
 ---Check if a player matches filter parameters.
----@param player OxPlayer
+---@param player OxPlayerInternal
 ---@param filter table
 ---@return boolean?
 local function filterPlayer(player, filter)
-    local metadata = player.private.metadata
+    local metadata = player:get()
 
     for k, v in pairs(filter) do
         if k == 'groups' then
@@ -121,7 +120,7 @@ end
 
 ---Returns the first player that matches the filter properties.
 ---@param filter table
----@return OxPlayer?
+---@return OxPlayerInternal?
 function Ox.GetPlayerByFilter(filter)
     for _, player in pairs(PlayerRegistry) do
         if player.charid then
@@ -134,7 +133,7 @@ end
 
 ---Returns an array of all players matching the filter properties.
 ---@param filter table?
----@return OxPlayer[]
+---@return OxPlayerInternal[]
 function Ox.GetPlayers(filter)
     local size = 0
     local players = {}
@@ -160,7 +159,7 @@ RegisterNetEvent('ox:playerJoined', function()
         return DropPlayer(playerId, serverLockdown)
     end
 
-    ---@type OxPlayer?
+    ---@type OxPlayerInternal?
     local player = PlayerRegistry[playerId]
 
     if not player then

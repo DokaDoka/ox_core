@@ -1,10 +1,3 @@
----@class PlayerIdentifiers
----@field license string
----@field license2 string Preferred identifier; should always refer to Rockstar Social Club ID.
----@field discord? string
----@field fivem? string
----@field steam? string
-
 ---Return all identifiers for the given source.
 ---@param source number | string
 ---@return PlayerIdentifiers
@@ -22,3 +15,21 @@ function Ox.GetIdentifiers(source)
 
     return identifiers
 end
+
+local utils = {}
+
+function utils.getRandomLetter()
+    return string.char(math.random(65, 90))
+end
+
+---@param lowLimit number?
+---@param highLimit number?
+function utils.getRandomInt(lowLimit, highLimit)
+    return math.random(lowLimit or 0, highLimit or 9)
+end
+
+function utils.getAlphanumeric()
+    return math.random(0, 1) == 1 and utils.getRandomLetter() or utils.getRandomInt()
+end
+
+return utils

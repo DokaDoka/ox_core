@@ -46,7 +46,7 @@ local OxVehicle = require 'server.vehicle.class'
 ---@param coords vector3
 ---@param heading number
 ---@param vType string
----@return OxVehicle?
+---@return OxVehicleInternal?
 local function spawnVehicle(id, owner, group, plate, vin, model, script, data, coords, heading, vType)
     -- New native seems to be missing some types, for now we'll convert to known types
     -- https://github.com/citizenfx/fivem/commit/1e266a2ca5c04eb96c090de67508a3475d35d6da
@@ -184,20 +184,7 @@ function Ox.CreateVehicle(data, coords, heading)
     return spawnVehicle(vehicleId, owner, group, plate, vin, model, script, data, coords, heading or 90.0, modelData.type)
 end
 
-local math_random = math.random
-
-local function getNumber()
-    return math_random(0, 9)
-end
-
-local function getLetter()
-    return string.char(math_random(65, 90))
-end
-
-local function getAlphanumeric()
-    return math_random(0, 1) == 1 and getLetter() or getNumber()
-end
-
+local utils = require 'server.utils'
 local plateFormat = string.upper(GetConvar('ox:plateFormat', '........'))
 local formatLen = #plateFormat
 
@@ -213,11 +200,11 @@ function Ox.GeneratePlate()
             local char = plateFormat:sub(i, i)
 
             if char == '1' then
-                plate[tableLen] = getNumber()
+                plate[tableLen] = utils.getRandomInt()
             elseif char == 'A' then
-                plate[tableLen] = getLetter()
+                plate[tableLen] = utils.getRandomLetter()
             elseif char == '.' then
-                plate[tableLen] = getAlphanumeric()
+                plate[tableLen] = utils.getAlphanumeric()
             elseif char == '^' then
                 i += 1
 
@@ -249,18 +236,21 @@ end
 ---@param model string
 ---@return string
 function Ox.GenerateVin(model)
-    local vehicle = Ox.GetVehicleData(model:lower())
+    local vehicle = Ox.GetVehicleData(model:lower()) --[[@as VehicleData]]
+
     local arr = {
-        math_random(1, 9),
+        utils.getRandomInt(1, 9),
         vehicle.make == '' and 'OX' or vehicle.make:sub(1, 2):upper(),
         model:sub(1, 2):upper(),
-        getAlphanumeric(),
-        string.char(math_random(65, 90)),
+        nil,
+        nil,
+        os.time()
     }
 
     while true do
+        arr[4] = utils.getAlphanumeric()
+        arr[5] = utils.getRandomLetter()
         ---@diagnostic disable-next-line: param-type-mismatch
-        arr[6] = os.time(os.date("!*t"))
         local vin = table.concat(arr)
 
         if db.isVinAvailable(vin) then return vin end

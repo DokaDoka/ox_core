@@ -4,7 +4,7 @@ AddEventHandler('playerEnteredScope', function(data)
     local player = Ox.GetPlayer(source)
 
     if player then
-        local inScope = player.private.inScope
+        local inScope = player:getPlayersInScope()
         inScope[target] = true
     end
 end)
@@ -15,7 +15,7 @@ AddEventHandler('playerLeftScope', function(data)
     local player = Ox.GetPlayer(source)
 
     if player then
-        local inScope = player.private.inScope
+        local inScope = player:getPlayersInScope()
         inScope[target] = nil
     end
 end)
@@ -26,16 +26,20 @@ local db = require 'server.player.db'
 local StatusRegistry = require 'server.status.registry'
 
 RegisterNetEvent('ox:selectCharacter', function(data)
-    local player = Ox.GetPlayer(source) --[[@as OxPlayer]]
+    local player = Ox.GetPlayer(source)
+
+    if not player then return end
+
     local character
 
     if type(data) == 'table' then
         local phoneNumber = npwd and npwd:generatePhoneNumber() or nil
+        local stateid = Ox.GenerateStateId()
 
         character = {
             firstname = data.firstName,
             lastname = data.lastName,
-            charid = db.createCharacter(player.userid, data.firstName, data.lastName, data.gender, data.date, phoneNumber),
+            charid = db.createCharacter(player.userid, stateid, data.firstName, data.lastName, data.gender, data.date, phoneNumber),
         }
     elseif type(data) == 'number' and data <= Shared.CHARACTER_SLOTS then
         character = player.characters[data]
@@ -46,9 +50,15 @@ RegisterNetEvent('ox:selectCharacter', function(data)
     player.characters = nil
     player.name = ('%s %s'):format(character.firstname, character.lastname)
     player.charid = character.charid
+    player.stateid = character.stateid
     player.firstname = character.firstname
     player.lastname = character.lastname
     player.ped = GetPlayerPed(player.source)
+
+    if not player.stateid then
+        player.stateid = Ox.GenerateStateId()
+        db.updateStateId(player.stateid, player.charid)
+    end
 
     local groups = db.selectCharacterGroups(player.charid)
 
@@ -58,7 +68,7 @@ RegisterNetEvent('ox:selectCharacter', function(data)
             local group = Ox.GetGroup(data.name)
 
             if group then
-                group:add(player, data.grade)
+                group:add(player --[[@as OxPlayerInternal]], data.grade)
             end
         end
     end
@@ -66,9 +76,11 @@ RegisterNetEvent('ox:selectCharacter', function(data)
     local licenses = db.selectCharacterLicenses(player.charid)
 
     if licenses then
+        local playerLicenses = player:getLicenses()
+
         for i = 1, #licenses do
             local license = licenses[i]
-            player.private.licenses[license.name] = license
+            playerLicenses[license.name] = license
             license.name = nil
         end
     end
@@ -85,6 +97,7 @@ RegisterNetEvent('ox:selectCharacter', function(data)
         name = player.name,
         userid = player.userid,
         charid = player.charid,
+        stateid = player.stateid,
         groups = player:getGroups(),
     }, cData.health, cData.armour, cData.gender)
 
@@ -113,15 +126,15 @@ RegisterNetEvent('ox:deleteCharacter', function(slot)
         slot += 1
         local player = Ox.GetPlayer(source)
 
-        if player then
-            local charid = player.characters[slot]?.charid
+        if not player then return end
 
-            if charid then
-                TriggerEvent('ox:characterDeleted', player.source, player.userid, charid)
-                appearance:save(charid)
-                db.deleteCharacter(charid)
-                return table.remove(player.characters, slot)
-            end
+        local charid = player.characters[slot]?.charid
+
+        if charid then
+            TriggerEvent('ox:characterDeleted', player.source, player.userid, charid)
+            appearance:save(charid)
+            db.deleteCharacter(charid)
+            return table.remove(player.characters, slot)
         end
     end
 
@@ -140,7 +153,7 @@ RegisterNetEvent('ox:setPlayerInService', function(job)
     local player = Ox.GetPlayer(source)
 
     if player and player.charid then
-        if job and player.private.groups[job] then
+        if job and player:getGroup(job) then
             return player:set('inService', job, true)
         end
 

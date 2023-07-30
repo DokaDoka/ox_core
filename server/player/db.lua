@@ -1,27 +1,26 @@
 local MySQL = MySQL
 local db = {}
 
-local SELECT_USERID = string.format('SELECT `userid` FROM `users` WHERE %s = ?', Server.PRIMARY_IDENTIFIER)
-local SELECT_USERID_DESC = string.format('%s %s', SELECT_USERID, 'ORDER BY `userid` DESC')
+local SELECT_USERID = ('SELECT `userid` FROM `users` WHERE `%s` = ? LIMIT ?, 1;'):format(Server.PRIMARY_IDENTIFIER)
 ---Select the userid for a player based on their identifier.
 ---@param identifier string
----@param newestFirst? boolean
+---@param offset? number
 ---@return number?
-function db.getUserFromIdentifier(identifier, newestFirst)
-    return MySQL.scalar.await(newestFirst and SELECT_USERID_DESC or SELECT_USERID, { identifier })
+function db.getUserFromIdentifier(identifier, offset)
+    return MySQL.scalar.await(SELECT_USERID, { identifier, offset or 0 })
 end
 
 local INSERT_USER = 'INSERT INTO `users` (`username`, `license2`, `steam`, `fivem`, `discord`) VALUES (?, ?, ?, ?, ?)'
 ---Register a new user when a player first joins the server, and return their userid.
 ---@param username string
 ---@param identifiers {[string]: string}
----@return number?
+---@return number
 function db.createUser(username, identifiers)
     return MySQL.prepare.await(INSERT_USER,
-        { username, identifiers.license2, identifiers.steam, identifiers.fivem, identifiers.discord }) --[[@as number?]]
+        { username, identifiers.license2, identifiers.steam, identifiers.fivem, identifiers.discord }) --[[@as number]]
 end
 
-local SELECT_CHARACTERS = 'SELECT `charid`, `firstname`, `lastname`, `x`, `y`, `z`, `heading`, DATE_FORMAT(`last_played`, "%d/%m/%Y") AS `last_played` FROM `characters` WHERE `userid` = ? AND `deleted` IS NULL'
+local SELECT_CHARACTERS = 'SELECT `charid`, `stateid`, `firstname`, `lastname`, `x`, `y`, `z`, `heading`, DATE_FORMAT(`last_played`, "%d/%m/%Y") AS `last_played` FROM `characters` WHERE `userid` = ? AND `deleted` IS NULL'
 ---Select all characters owned by the player.
 ---@param userid number
 ---@return table
@@ -37,17 +36,22 @@ function db.selectCharacterData(charid)
     return MySQL.single.await(SELECT_CHARACTER_DATA, { charid }) or {}
 end
 
-local INSERT_CHARACTER = 'INSERT INTO `characters` (`userid`, `firstname`, `lastname`, `gender`, `dateofbirth`, `phone_number`) VALUES (?, ?, ?, ?, ?, ?)'
+local INSERT_CHARACTER = 'INSERT INTO `characters` (`userid`, `stateid`, `firstname`, `lastname`, `gender`, `dateofbirth`, `phone_number`) VALUES (?, ?, ?, ?, ?, ?, ?)'
+local INSERT_CHARACTER_INVENTORY = 'INSERT INTO `character_inventory` (`charid`) VALUES (?)'
 ---Register a new character for the user and returns the charid.
 ---@param userid number
+---@param stateid string
 ---@param firstName string
 ---@param lastName string
 ---@param gender string
 ---@param date number
 ---@param phone_number number?
 ---@return number?
-function db.createCharacter(userid, firstName, lastName, gender, date, phone_number)
-    return MySQL.prepare.await(INSERT_CHARACTER, { userid, firstName, lastName, gender, date, phone_number }) --[[@as number]]
+function db.createCharacter(userid, stateid, firstName, lastName, gender, date, phone_number)
+    local charid = MySQL.prepare.await(INSERT_CHARACTER, { userid, stateid, firstName, lastName, gender, date, phone_number }) --[[@as number]]
+    MySQL.prepare.await(INSERT_CHARACTER_INVENTORY, { charid })
+
+    return charid
 end
 
 local UPDATE_CHARACTER = 'UPDATE characters SET `x` = ?, `y` = ?, `z` = ?, `heading` = ?, `is_dead` = ?, `last_played` = ?, `health` = ?, `armour` = ?, `statuses` = ? WHERE `charid` = ?'
@@ -94,6 +98,22 @@ local REMOVE_CHARACTER_LICENSE = 'DELETE FROM `character_licenses` WHERE `charid
 ---@param name string
 function db.removeCharacterLicense(charid, name)
     return MySQL.prepare.await(REMOVE_CHARACTER_LICENSE, { charid, name })
+end
+
+local SELECT_STATEID = 'SELECT 1 FROM `characters` WHERE stateid = ?'
+
+---@param stateid string
+function db.isStateIdAvailable(stateid)
+    return not MySQL.scalar.await(SELECT_STATEID, { stateid })
+end
+
+local UPDATE_STATEID = 'UPDATE characters SET `stateid` = ? WHERE `charid` = ?'
+
+---@param stateid string
+---@param charid number
+---@return number
+function db.updateStateId(stateid, charid)
+    return MySQL.update.await(UPDATE_STATEID, { stateid, charid })
 end
 
 return db
