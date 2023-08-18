@@ -90,14 +90,13 @@ function Ox.GetPlayer(playerId)
 end
 
 function Ox.GetPlayerFromUserId(userId)
-    local playerId = playerIdFromUserId[userId]
-
-    return playerId and PlayerRegistry[playerId] or nil
+    return PlayerRegistry[playerIdFromUserId[userId]]
 end
 
-function Ox.GetAllPlayers()
+function Ox.GetPlayerRegistry()
     return PlayerRegistry
 end
+
 ---Check if a player matches filter parameters.
 ---@param player OxPlayerInternal
 ---@param filter table
@@ -207,16 +206,16 @@ AddEventHandler('playerConnecting', function(username, _, deferrals)
 end)
 
 CreateThread(function()
-    local GetPlayerEndpoint = GetPlayerEndpoint
+    ---@diagnostic disable-next-line: undefined-global
+    local DoesPlayerExist = DoesPlayerExist
 
     while true do
-        Wait(30000)
+        Wait(10000)
 
         -- If a player quits during the connection phase (and before joining)
         -- the tempId may stay active for several minutes.
         for tempId in pairs(connectingPlayers) do
-            ---@diagnostic disable-next-line: param-type-mismatch
-            if not GetPlayerEndpoint(tempId) then
+            if not DoesPlayerExist(tempId --[[@as string]]) then
                 local player = PlayerRegistry[tempId]
                 connectingPlayers[tempId] = nil
                 PlayerRegistry[tempId] = nil
@@ -244,7 +243,7 @@ AddEventHandler('playerDropped', function(reason)
     if player then
         player:logout(true)
 
-        removePlayer(player.source, player.userid, ('Dropped, %s'):format(reason) )
+        removePlayer(player.source, player.userid, ('Dropped, %s'):format(reason))
     end
 end)
 
